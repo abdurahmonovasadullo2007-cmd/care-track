@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tashxislar — CareTrack TYBT</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+<div class="app-layout">
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon"><i class="fa-solid fa-hospital"></i></div>
+            <div><h2>CareTrack</h2><span>TYBT</span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section-label">Asosiy menyu</div>
+            <a href="dashboard.html" class="nav-item"><span class="nav-icon"><i class="fa-solid fa-house"></i></span><span class="nav-label">Bosh sahifa</span></a>
+            <a href="doctors.html"   class="nav-item"><span class="nav-icon"><i class="fa-solid fa-user-doctor"></i></span><span class="nav-label">Shifokorlar</span></a>
+            <a href="patients.html"  class="nav-item"><span class="nav-icon"><i class="fa-solid fa-users"></i></span><span class="nav-label">Bemorlar</span></a>
+            <a href="illnesses.html" class="nav-item"><span class="nav-icon"><i class="fa-solid fa-file-medical"></i></span><span class="nav-label">Tashxislar</span></a>
+        </nav>
+        <button id="theme-toggle" class="theme-toggle-btn"></button>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">?</div>
+                <div class="user-details">
+                    <div class="user-name" id="user-name">Yuklanmoqda...</div>
+                    <div class="user-role" id="user-role"></div>
+                </div>
+            </div>
+            <button id="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Chiqish</button>
+        </div>
+    </aside>
+
+    <div class="main-content">
+        <div class="page-header">
+            <h1>Tashxislar / Kasalliklar</h1>
+            <button class="btn btn-primary" id="btn-add-illness">+ Tashxis qo'shish</button>
+        </div>
+
+        <div class="page-body">
+            <div class="card">
+                <div class="card-header">
+                    <div class="search-bar">
+                        <div class="search-input-wrap">
+                            <span class="search-icon">&#128269;</span>
+                            <input type="text" id="search-input"
+                                   placeholder="Kasallik turi, tavsif yoki bemor ismi bo'yicha qidirish...">
+                        </div>
+                        <select id="filter-severity" style="padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;flex-shrink:0;">
+                            <option value="">Barcha darajalar</option>
+                            <option value="mild">Yengil</option>
+                            <option value="moderate">O'rtacha</option>
+                            <option value="severe">Og'ir</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Kasallik turi</th>
+                                <th>Kasallik tavsifi</th>
+                                <th>Og'irlik darajasi</th>
+                                <th>Bemor ismi</th>
+                                <th>Shifokor</th>
+                                <th>Tashxis sanasi</th>
+                                <th>Amallar</th>
+                            </tr>
+                        </thead>
+                        <tbody id="illnesses-body">
+                            <tr><td colspan="8"><div class="spinner"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tashxis qo'shish / tahrirlash modali -->
+<div class="modal-overlay" id="illness-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="modal-title">Tashxis qo'shish</h3>
+            <button class="modal-close" onclick="closeModal('illness-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="modal-error" class="alert alert-error hidden"></div>
+            <form id="illness-form">
+                <input type="hidden" id="illness-id">
+                <div class="form-group">
+                    <label>Kasallik turi *</label>
+                    <input type="text" id="i-code" placeholder="masalan: Gipertoniya, Astma, Migren" required>
+                </div>
+                <div class="form-group">
+                    <label>Kasallik tavsifi *</label>
+                    <textarea id="i-desc" placeholder="Tashxisning klinik tavsifi" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Og'irlik darajasi *</label>
+                    <select id="i-severity" required>
+                        <option value="">Darajani tanlang</option>
+                        <option value="mild">Yengil</option>
+                        <option value="moderate">O'rtacha</option>
+                        <option value="severe">Og'ir</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Bemor *</label>
+                    <select id="i-patient" required>
+                        <option value="">Bemorni tanlang</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tashxis sanasi</label>
+                    <input type="date" id="i-date">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('illness-modal')">Bekor qilish</button>
+            <button class="btn btn-primary" id="btn-save-illness">Saqlash</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="app.js"></script>
+<script src="theme.js"></script>
+<script>
+let currentUser = null;
+
+function severityUz(s) {
+    return s === 'mild' ? 'Yengil' : s === 'moderate' ? "O'rtacha" : "Og'ir";
+}
+
+(async () => {
+    currentUser = await requireAuth();
+    if (!currentUser) return;
+    setSidebarUser(currentUser);
+    setActiveNav();
+    document.getElementById('btn-logout').addEventListener('click', logout);
+    document.getElementById('btn-add-illness').addEventListener('click', () => openAddModal());
+    document.getElementById('btn-save-illness').addEventListener('click', saveIllness);
+
+    document.getElementById('i-date').value = new Date().toISOString().split('T')[0];
+
+    const patients = await apiFetch('/api/patients');
+    const select = document.getElementById('i-patient');
+    patients.forEach(p => {
+        select.innerHTML += `<option value="${p.id}">${p.full_name}</option>`;
+    });
+
+    loadIllnesses();
+
+    let searchTimer;
+    document.getElementById('search-input').addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => loadIllnesses(), 300);
+    });
+    document.getElementById('filter-severity').addEventListener('change', () => loadIllnesses());
+})();
+
+async function loadIllnesses() {
+    const search   = document.getElementById('search-input').value;
+    const severity = document.getElementById('filter-severity').value;
+    let url = '/api/illnesses?';
+    if (search)   url += `search=${encodeURIComponent(search)}&`;
+    if (severity) url += `severity=${severity}`;
+    showTableSpinner('illnesses-body');
+    try {
+        const illnesses = await apiFetch(url);
+        renderIllnesses(illnesses);
+    } catch (err) {
+        showToast('Tashxislarni yuklashda xato: ' + err.message, 'error');
+    }
+}
+
+function renderIllnesses(illnesses) {
+    const tbody = document.getElementById('illnesses-body');
+    if (illnesses.length === 0) { showEmptyState('illnesses-body', 'Tashxislar topilmadi'); return; }
+    tbody.innerHTML = illnesses.map((il, i) => `
+        <tr>
+            <td class="text-muted">${i + 1}</td>
+            <td><strong>${il.icd_code}</strong></td>
+            <td style="max-width:200px;">${il.description}</td>
+            <td><span class="badge badge-${il.severity}">${severityUz(il.severity)}</span></td>
+            <td><a href="patient-profile.html?id=${il.patient_id}">${il.patient_name}</a></td>
+            <td>${il.doctor_name || '<span class="text-muted">—</span>'}</td>
+            <td>${formatDate(il.diagnosis_date)}</td>
+            <td class="td-actions">
+                <button class="btn btn-secondary btn-sm" onclick="openEditModal(${il.id})">Tahrirlash</button>
+                ${currentUser && currentUser.role === 'admin'
+                    ? `<button class="btn btn-danger btn-sm" onclick="deleteIllness(${il.id}, '${il.icd_code}')">O'chirish</button>`
+                    : ''}
+            </td>
+        </tr>`).join('');
+}
+
+function openAddModal() {
+    document.getElementById('modal-title').textContent = "Tashxis qo'shish";
+    document.getElementById('illness-form').reset();
+    document.getElementById('illness-id').value = '';
+    document.getElementById('i-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('modal-error').classList.add('hidden');
+    openModal('illness-modal');
+}
+
+async function openEditModal(id) {
+    try {
+        const il = await apiFetch(`/api/illnesses/${id}`);
+        document.getElementById('modal-title').textContent = 'Tashxisni tahrirlash';
+        document.getElementById('illness-id').value = il.id;
+        document.getElementById('i-code').value     = il.icd_code;
+        document.getElementById('i-desc').value     = il.description;
+        document.getElementById('i-severity').value = il.severity;
+        document.getElementById('i-patient').value  = il.patient_id;
+        document.getElementById('i-date').value     = il.diagnosis_date ? il.diagnosis_date.split('T')[0] : '';
+        document.getElementById('modal-error').classList.add('hidden');
+        openModal('illness-modal');
+    } catch (err) {
+        showToast('Tashxisni yuklashda xato: ' + err.message, 'error');
+    }
+}
+
+async function saveIllness() {
+    const errorEl = document.getElementById('modal-error');
+    errorEl.classList.add('hidden');
+    const id   = document.getElementById('illness-id').value;
+    const body = {
+        icd_code:       document.getElementById('i-code').value.trim(),
+        description:    document.getElementById('i-desc').value.trim(),
+        severity:       document.getElementById('i-severity').value,
+        patient_id:     document.getElementById('i-patient').value,
+        diagnosis_date: document.getElementById('i-date').value
+    };
+    if (!body.icd_code || !body.description || !body.severity || !body.patient_id) {
+        errorEl.textContent = "Kasallik turi, tavsif, og'irlik darajasi va bemor majburiy maydonlar.";
+        errorEl.classList.remove('hidden');
+        return;
+    }
+    try {
+        if (id) {
+            await apiFetch(`/api/illnesses/${id}`, { method: 'PUT', body });
+            showToast('Tashxis muvaffaqiyatli yangilandi');
+        } else {
+            await apiFetch('/api/illnesses', { method: 'POST', body });
+            showToast("Tashxis muvaffaqiyatli qo'shildi");
+        }
+        closeModal('illness-modal');
+        loadIllnesses();
+    } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.classList.remove('hidden');
+    }
+}
+
+async function deleteIllness(id, code) {
+    if (!confirmDelete(code)) return;
+    try {
+        await apiFetch(`/api/illnesses/${id}`, { method: 'DELETE' });
+        showToast("Tashxis o'chirildi");
+        loadIllnesses();
+    } catch (err) {
+        showToast("O'chirishda xato: " + err.message, 'error');
+    }
+}
+</script>
+</body>
+</html>

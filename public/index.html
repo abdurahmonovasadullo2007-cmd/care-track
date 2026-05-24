@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareTrack TYBT — Kirish</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="login-page">
+        <div class="login-card">
+            <div class="login-logo">
+                <div class="logo-icon">&#9877;</div>
+                <h1>CareTrack</h1>
+                <p>Tibbiy Yozuvlarni Boshqarish Tizimi</p>
+            </div>
+
+            <h2>Hisobingizga kiring</h2>
+
+            <div id="login-error" class="alert alert-error hidden"></div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Foydalanuvchi nomi</label>
+                    <input type="text" id="username" name="username"
+                           placeholder="Foydalanuvchi nomini kiriting" required autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Parol</label>
+                    <input type="password" id="password" name="password"
+                           placeholder="Parolni kiriting" required autocomplete="current-password">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" id="login-btn">
+                    Kirish
+                </button>
+            </form>
+
+            <p style="margin-top:24px; font-size:12px; color:var(--text-light); text-align:center; line-height:2;">
+                Admin: <strong>admin</strong> / <strong>admin123</strong> &nbsp;|&nbsp;
+                Klinisist: <strong>drsmith</strong> / <strong>admin123</strong> <br>
+                Qabulxona: <strong>receptionist</strong> / <strong>admin123</strong>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        fetch('/api/auth/me', { credentials: 'include' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.user) window.location.href = '/dashboard.html';
+            })
+            .catch(() => {});
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errorEl = document.getElementById('login-error');
+            const btn = document.getElementById('login-btn');
+
+            errorEl.classList.add('hidden');
+            btn.disabled = true;
+            btn.textContent = 'Kirish...';
+
+            const body = {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            };
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                    credentials: 'include'
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    errorEl.textContent = "Noto'g'ri foydalanuvchi nomi yoki parol";
+                    errorEl.classList.remove('hidden');
+                } else {
+                    window.location.href = '/dashboard.html';
+                }
+            } catch (err) {
+                errorEl.textContent = 'Tarmoq xatosi. Server ishlamoqdami?';
+                errorEl.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Kirish';
+            }
+        });
+    </script>
+</body>
+</html>

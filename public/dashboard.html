@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bosh sahifa — CareTrack TYBT</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+<div class="app-layout">
+
+    <!-- Yon panel -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon"><i class="fa-solid fa-hospital"></i></div>
+            <div>
+                <h2>CareTrack</h2>
+                <span>TYBT</span>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section-label">Asosiy menyu</div>
+            <a href="dashboard.html" class="nav-item">
+                <span class="nav-icon"><i class="fa-solid fa-house"></i></span>
+                <span class="nav-label">Bosh sahifa</span>
+            </a>
+            <a href="doctors.html" class="nav-item">
+                <span class="nav-icon"><i class="fa-solid fa-user-doctor"></i></span>
+                <span class="nav-label">Shifokorlar</span>
+            </a>
+            <a href="patients.html" class="nav-item">
+                <span class="nav-icon"><i class="fa-solid fa-users"></i></span>
+                <span class="nav-label">Bemorlar</span>
+            </a>
+            <a href="illnesses.html" class="nav-item">
+                <span class="nav-icon"><i class="fa-solid fa-file-medical"></i></span>
+                <span class="nav-label">Tashxislar</span>
+            </a>
+        </nav>
+        <button id="theme-toggle" class="theme-toggle-btn"></button>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">?</div>
+                <div class="user-details">
+                    <div class="user-name" id="user-name">Yuklanmoqda...</div>
+                    <div class="user-role" id="user-role"></div>
+                </div>
+            </div>
+            <button id="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Chiqish</button>
+        </div>
+    </aside>
+
+    <!-- Asosiy kontent -->
+    <div class="main-content">
+        <div class="page-header">
+            <h1>Bosh sahifa</h1>
+            <span id="welcome-msg" class="text-muted" style="font-size:13px;"></span>
+        </div>
+
+        <div class="page-body">
+
+            <!-- Statistika -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fa-solid fa-user-doctor"></i></div>
+                    <div>
+                        <div class="stat-number" id="count-doctors">—</div>
+                        <div class="stat-label">Shifokorlar</div>
+                    </div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+                    <div>
+                        <div class="stat-number" id="count-patients">—</div>
+                        <div class="stat-label">Bemorlar</div>
+                    </div>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-icon"><i class="fa-solid fa-file-medical"></i></div>
+                    <div>
+                        <div class="stat-number" id="count-illnesses">—</div>
+                        <div class="stat-label">Tashxislar</div>
+                    </div>
+                </div>
+                <div class="stat-card red">
+                    <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div>
+                        <div class="stat-number" id="count-severe">—</div>
+                        <div class="stat-label">Og'ir holatlar</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- So'nggi bemorlar -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>So'nggi bemorlar</h2>
+                    <a href="patients.html" class="btn btn-secondary btn-sm">Barchasini ko'rish</a>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>To'liq ism</th>
+                                <th>Jinsi</th>
+                                <th>Tug'ilgan sana</th>
+                                <th>Biriktirilgan shifokor</th>
+                                <th>Amal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-patients-body">
+                            <tr><td colspan="5"><div class="spinner"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- So'nggi tashxislar -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>So'nggi tashxislar</h2>
+                    <a href="illnesses.html" class="btn btn-secondary btn-sm">Barchasini ko'rish</a>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Kasallik turi</th>
+                                <th>Kasallik tavsifi</th>
+                                <th>Bemor ismi</th>
+                                <th>Og'irlik darajasi</th>
+                                <th>Tashxis sanasi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-illnesses-body">
+                            <tr><td colspan="5"><div class="spinner"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+<script src="theme.js"></script>
+<script>
+(async () => {
+    const user = await requireAuth();
+    if (!user) return;
+    setSidebarUser(user);
+    setActiveNav();
+    document.getElementById('welcome-msg').textContent = `Xush kelibsiz, ${user.full_name || user.username}!`;
+    document.getElementById('btn-logout').addEventListener('click', logout);
+
+    try {
+        const [doctors, patients, illnesses] = await Promise.all([
+            apiFetch('/api/doctors'),
+            apiFetch('/api/patients'),
+            apiFetch('/api/illnesses')
+        ]);
+
+        document.getElementById('count-doctors').textContent   = doctors.length;
+        document.getElementById('count-patients').textContent  = patients.length;
+        document.getElementById('count-illnesses').textContent = illnesses.length;
+        document.getElementById('count-severe').textContent    = illnesses.filter(i => i.severity === 'severe').length;
+
+        const tbody1 = document.getElementById('recent-patients-body');
+        const recentP = patients.slice(0, 5);
+        tbody1.innerHTML = recentP.length === 0
+            ? '<tr><td colspan="5" class="text-muted" style="text-align:center;padding:20px;">Hali bemorlar yo\'q</td></tr>'
+            : recentP.map(p => `
+                <tr>
+                    <td><strong>${p.full_name}</strong></td>
+                    <td><span class="badge badge-${p.gender}">${p.gender === 'male' ? 'Erkak' : p.gender === 'female' ? 'Ayol' : 'Boshqa'}</span></td>
+                    <td>${formatDate(p.date_of_birth)}</td>
+                    <td>${p.doctor_name || '<span class="text-muted">Biriktirilmagan</span>'}</td>
+                    <td><a href="patient-profile.html?id=${p.id}" class="btn btn-secondary btn-sm">Ko'rish</a></td>
+                </tr>`).join('');
+
+        const tbody2 = document.getElementById('recent-illnesses-body');
+        const recentI = illnesses.slice(0, 5);
+        tbody2.innerHTML = recentI.length === 0
+            ? '<tr><td colspan="5" class="text-muted" style="text-align:center;padding:20px;">Hali tashxislar yo\'q</td></tr>'
+            : recentI.map(i => `
+                <tr>
+                    <td><strong>${i.icd_code}</strong></td>
+                    <td>${i.description}</td>
+                    <td><a href="patient-profile.html?id=${i.patient_id}">${i.patient_name}</a></td>
+                    <td><span class="badge badge-${i.severity}">${i.severity === 'mild' ? 'Yengil' : i.severity === 'moderate' ? "O'rtacha" : "Og'ir"}</span></td>
+                    <td>${formatDate(i.diagnosis_date)}</td>
+                </tr>`).join('');
+
+    } catch (err) {
+        showToast("Ma'lumotlarni yuklashda xato: " + err.message, 'error');
+    }
+})();
+</script>
+</body>
+</html>

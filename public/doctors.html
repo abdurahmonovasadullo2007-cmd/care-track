@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shifokorlar — CareTrack TYBT</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+<div class="app-layout">
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon"><i class="fa-solid fa-hospital"></i></div>
+            <div><h2>CareTrack</h2><span>TYBT</span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section-label">Asosiy menyu</div>
+            <a href="dashboard.html" class="nav-item"><span class="nav-icon"><i class="fa-solid fa-house"></i></span><span class="nav-label">Bosh sahifa</span></a>
+            <a href="doctors.html"   class="nav-item"><span class="nav-icon"><i class="fa-solid fa-user-doctor"></i></span><span class="nav-label">Shifokorlar</span></a>
+            <a href="patients.html"  class="nav-item"><span class="nav-icon"><i class="fa-solid fa-users"></i></span><span class="nav-label">Bemorlar</span></a>
+            <a href="illnesses.html" class="nav-item"><span class="nav-icon"><i class="fa-solid fa-file-medical"></i></span><span class="nav-label">Tashxislar</span></a>
+        </nav>
+        <button id="theme-toggle" class="theme-toggle-btn"></button>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">?</div>
+                <div class="user-details">
+                    <div class="user-name" id="user-name">Yuklanmoqda...</div>
+                    <div class="user-role" id="user-role"></div>
+                </div>
+            </div>
+            <button id="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Chiqish</button>
+        </div>
+    </aside>
+
+    <div class="main-content">
+        <div class="page-header">
+            <h1>Shifokorlar</h1>
+            <button class="btn btn-primary" id="btn-add-doctor" data-admin-only>
+                + Shifokor qo'shish
+            </button>
+        </div>
+
+        <div class="page-body">
+            <div class="card">
+                <div class="card-header">
+                    <div class="search-bar">
+                        <div class="search-input-wrap">
+                            <span class="search-icon">&#128269;</span>
+                            <input type="text" id="search-input"
+                                   placeholder="Ism, mutaxassislik yoki bo'lim bo'yicha qidirish...">
+                        </div>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>To'liq ism</th>
+                                <th>Mutaxassislik</th>
+                                <th>Bo'lim</th>
+                                <th>Telefon raqam</th>
+                                <th>Elektron pochta</th>
+                                <th>Amallar</th>
+                            </tr>
+                        </thead>
+                        <tbody id="doctors-body">
+                            <tr><td colspan="7"><div class="spinner"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Shifokor qo'shish / tahrirlash modali -->
+<div class="modal-overlay" id="doctor-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="modal-title">Shifokor qo'shish</h3>
+            <button class="modal-close" onclick="closeModal('doctor-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="modal-error" class="alert alert-error hidden"></div>
+            <form id="doctor-form">
+                <input type="hidden" id="doctor-id">
+                <div class="form-group">
+                    <label>To'liq ism *</label>
+                    <input type="text" id="d-name" placeholder="Dr. Ism Familiya" required>
+                </div>
+                <div class="form-group">
+                    <label>Mutaxassislik *</label>
+                    <input type="text" id="d-spec" placeholder="masalan: Kardiologiya" required>
+                </div>
+                <div class="form-group">
+                    <label>Bo'lim *</label>
+                    <input type="text" id="d-dept" placeholder="masalan: Yurak bo'limi" required>
+                </div>
+                <div class="form-group">
+                    <label>Telefon raqam</label>
+                    <input type="tel" id="d-phone" placeholder="+998 90 000 00 00">
+                </div>
+                <div class="form-group">
+                    <label>Elektron pochta</label>
+                    <input type="email" id="d-email" placeholder="shifokor@caretrack.uz">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('doctor-modal')">Bekor qilish</button>
+            <button class="btn btn-primary" id="btn-save-doctor">Saqlash</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="app.js"></script>
+<script src="theme.js"></script>
+<script>
+let currentUser = null;
+
+(async () => {
+    currentUser = await requireAuth();
+    if (!currentUser) return;
+    setSidebarUser(currentUser);
+    setActiveNav();
+    document.getElementById('btn-logout').addEventListener('click', logout);
+
+    loadDoctors();
+
+    let searchTimer;
+    document.getElementById('search-input').addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => loadDoctors(), 300);
+    });
+
+    const addBtn = document.getElementById('btn-add-doctor');
+    if (addBtn) addBtn.addEventListener('click', () => openAddModal());
+    document.getElementById('btn-save-doctor').addEventListener('click', saveDoctor);
+})();
+
+async function loadDoctors() {
+    const search = document.getElementById('search-input').value;
+    showTableSpinner('doctors-body');
+    try {
+        const url = '/api/doctors' + (search ? `?search=${encodeURIComponent(search)}` : '');
+        const doctors = await apiFetch(url);
+        renderDoctors(doctors);
+    } catch (err) {
+        showToast('Shifokorlarni yuklashda xato: ' + err.message, 'error');
+    }
+}
+
+function renderDoctors(doctors) {
+    const tbody = document.getElementById('doctors-body');
+    if (doctors.length === 0) { showEmptyState('doctors-body', 'Shifokorlar topilmadi'); return; }
+    tbody.innerHTML = doctors.map((d, i) => `
+        <tr>
+            <td class="text-muted">${i + 1}</td>
+            <td><strong>${d.full_name}</strong></td>
+            <td>${d.specialization}</td>
+            <td>${d.department}</td>
+            <td>${d.phone || '<span class="text-muted">—</span>'}</td>
+            <td>${d.email || '<span class="text-muted">—</span>'}</td>
+            <td class="td-actions">
+                ${currentUser && currentUser.role === 'admin' ? `
+                    <button class="btn btn-secondary btn-sm" onclick="openEditModal(${d.id})">Tahrirlash</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteDoctor(${d.id}, '${d.full_name.replace(/'/g,"\\'")}')">O'chirish</button>
+                ` : '<span class="text-muted" style="font-size:12px;">Faqat ko\'rish</span>'}
+            </td>
+        </tr>`).join('');
+}
+
+function openAddModal() {
+    document.getElementById('modal-title').textContent = "Shifokor qo'shish";
+    document.getElementById('doctor-form').reset();
+    document.getElementById('doctor-id').value = '';
+    document.getElementById('modal-error').classList.add('hidden');
+    openModal('doctor-modal');
+}
+
+async function openEditModal(id) {
+    try {
+        const d = await apiFetch(`/api/doctors/${id}`);
+        document.getElementById('modal-title').textContent = 'Shifokorni tahrirlash';
+        document.getElementById('doctor-id').value = d.id;
+        document.getElementById('d-name').value    = d.full_name;
+        document.getElementById('d-spec').value    = d.specialization;
+        document.getElementById('d-dept').value    = d.department;
+        document.getElementById('d-phone').value   = d.phone || '';
+        document.getElementById('d-email').value   = d.email || '';
+        document.getElementById('modal-error').classList.add('hidden');
+        openModal('doctor-modal');
+    } catch (err) {
+        showToast('Shifokorni yuklashda xato: ' + err.message, 'error');
+    }
+}
+
+async function saveDoctor() {
+    const errorEl = document.getElementById('modal-error');
+    errorEl.classList.add('hidden');
+    const id   = document.getElementById('doctor-id').value;
+    const body = {
+        full_name:      document.getElementById('d-name').value.trim(),
+        specialization: document.getElementById('d-spec').value.trim(),
+        department:     document.getElementById('d-dept').value.trim(),
+        phone:          document.getElementById('d-phone').value.trim(),
+        email:          document.getElementById('d-email').value.trim()
+    };
+    if (!body.full_name || !body.specialization || !body.department) {
+        errorEl.textContent = "Ism, mutaxassislik va bo'lim majburiy maydonlar.";
+        errorEl.classList.remove('hidden');
+        return;
+    }
+    try {
+        if (id) {
+            await apiFetch(`/api/doctors/${id}`, { method: 'PUT', body });
+            showToast('Shifokor muvaffaqiyatli yangilandi');
+        } else {
+            await apiFetch('/api/doctors', { method: 'POST', body });
+            showToast("Shifokor muvaffaqiyatli qo'shildi");
+        }
+        closeModal('doctor-modal');
+        loadDoctors();
+    } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.classList.remove('hidden');
+    }
+}
+
+async function deleteDoctor(id, name) {
+    if (!confirmDelete(name)) return;
+    try {
+        await apiFetch(`/api/doctors/${id}`, { method: 'DELETE' });
+        showToast("Shifokor o'chirildi");
+        loadDoctors();
+    } catch (err) {
+        showToast("O'chirishda xato: " + err.message, 'error');
+    }
+}
+</script>
+</body>
+</html>
