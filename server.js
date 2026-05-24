@@ -13,18 +13,23 @@ app.use(express.urlencoded({ extended: true }));
 
 // CORS - allow same-origin requests from the frontend
 app.use(cors({
-    origin: `http://localhost:${PORT}`,
+    origin: true,
     credentials: true
 }));
 
+// Trust Render's proxy (needed for secure cookies on HTTPS)
+app.set('trust proxy', 1);
+
 // Session configuration
+const isProduction = process.env.NODE_ENV === 'production';
 app.use(session({
-    secret: 'caretrack-secret-key-2024',  // In production, use an env variable
+    secret: process.env.SESSION_SECRET || 'caretrack-secret-key-2024',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false,       // Set to true when using HTTPS
-        maxAge: 1000 * 60 * 60 * 8  // 8 hours session lifetime
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        maxAge: 1000 * 60 * 60 * 8
     }
 }));
 
